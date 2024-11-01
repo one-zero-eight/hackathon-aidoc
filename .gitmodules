@@ -1,0 +1,3 @@
+[submodule "webui"]
+	path = webui
+	url = https://github.com/one-zero-eight/hackathon-aidoc-webui.git
