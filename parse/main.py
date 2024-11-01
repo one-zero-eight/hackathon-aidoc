@@ -17,11 +17,11 @@ download_semaphore = asyncio.Semaphore(5)  # Set to desired concurrency limit
 
 async def download_file(url, save_path):
     """Download the file from the given URL and save it to the specified path."""
-    # Check if the file already exists
-    if save_path.exists():
-        print(f"File already exists: {save_path}")
+    # Check if any file with the base name already exists
+    existing_files = list(save_path.parent.glob(f"{save_path.stem}.*"))
+    if existing_files:
+        print(f"File already exists: {existing_files[0]}")
         return
-
     async with download_semaphore:  # Limit concurrency
         response = await client.get(url)
         if response.status_code == 200:
@@ -101,6 +101,7 @@ async def main():
             cells = row.find_all(["td", "th"])
             row_data = []
             for i, cell in enumerate(cells):
+                save_path = None
                 # Check if the cell contains a link
                 link = cell.find("a")
                 if link and link.has_attr("href"):
@@ -123,10 +124,12 @@ async def main():
                         except ValueError:
                             pass  # Leave cell_text as is if parsing fails
                 row_data.append(cell_text)
+                if save_path:
+                    row_data.append(save_path)
             rows_data.append(row_data)
 
         # Create a DataFrame for the table
-        df = pd.DataFrame(rows_data, columns=headers)
+        df = pd.DataFrame(rows_data, columns=headers + ["Path"])
         tables_data[clean_label] = (
             df  # Store the DataFrame with the cleaned label as the key
         )
