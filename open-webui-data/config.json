@@ -1,0 +1,90 @@
+{
+  "version": 0,
+  "ui": {
+    "default_locale": "",
+    "prompt_suggestions": [
+      {
+        "title": [
+          "Help me study",
+          "vocabulary for a college entrance exam"
+        ],
+        "content": "Help me study vocabulary: write a sentence for me to fill in the blank, and I'll try to pick the correct option."
+      },
+      {
+        "title": [
+          "Give me ideas",
+          "for what to do with my kids' art"
+        ],
+        "content": "What are 5 creative things I could do with my kids' art? I don't want to throw them away, but it's also so much clutter."
+      }
+    ],
+    "enable_signup": true,
+    "default_user_role": "pending",
+    "enable_community_sharing": false,
+    "enable_message_rating": true,
+    "default_models": "mts",
+    "user_permissions": {
+      "chat": {
+        "deletion": true,
+        "editing": true,
+        "temporary": true
+      }
+    }
+  },
+  "openai": {
+    "api_base_urls": [
+      "https://innoglobalhack-general.olymp.innopolis.university/v1"
+    ],
+    "api_keys": [
+      "123"
+    ],
+    "enable": true
+  },
+  "ollama": {
+    "base_urls": [
+      "http://ollama:11434"
+    ],
+    "enable": false
+  },
+  "evaluation": {
+    "arena": {
+      "enable": false,
+      "models": []
+    }
+  },
+  "rag": {
+    "embedding_engine": "",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "pdf_extract_images": false,
+    "file": {
+      "max_size": null,
+      "max_count": null
+    },
+    "CONTENT_EXTRACTION_ENGINE": "tika",
+    "tika_server_url": "http://tika:9998",
+    "text_splitter": "",
+    "chunk_size": 1000,
+    "chunk_overlap": 100,
+    "template": "You are given a user query, some textual context and rules, all inside xml tags. You have to answer the query based on the context while respecting the rules.\n\n<context>\n{{CONTEXT}}\n</context>\n\n<rules>\n- If you don't know, just say so.\n- If you are not sure, ask for clarification.\n- Answer in the same language as the user query.\n- If the context appears unreadable or of poor quality, tell the user then answer as best as you can.\n- If the answer is not in the context but you think you know the answer, explain that to the user then answer with your own knowledge.\n- Answer directly and without using xml tags.\n</rules>\n\n<user_query>\n{{QUERY}}\n</user_query>\n",
+    "top_k": 3,
+    "relevance_threshold": 0,
+    "enable_hybrid_search": false,
+    "openai_api_base_url": "https://innoglobalhack-general.olymp.innopolis.university/v1",
+    "openai_api_key": "1",
+    "embedding_batch_size": 1,
+    "reranking_model": "BAAI/bge-reranker-v2-m3"
+  },
+  "webhook_url": "",
+  "auth": {
+    "admin": {
+      "show": false
+    },
+    "jwt_expiry": "-1"
+  },
+  "model_filter": {
+    "enable": false,
+    "list": [
+      ""
+    ]
+  }
+}

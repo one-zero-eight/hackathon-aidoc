@@ -1,2 +1,4 @@
-/open-webui-data
+/open-webui-data/*
+!/open-webui-data/config.json
+
 .idea
