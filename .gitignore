@@ -177,6 +177,7 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 
+/hf_cache
 /open-webui-data/*
 !/open-webui-data/config.json
 
