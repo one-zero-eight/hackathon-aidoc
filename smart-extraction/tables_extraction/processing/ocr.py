@@ -44,6 +44,16 @@ class Ocr:
 
         return [data[i] for i in range(0, len(data))]
 
+    def run_on_whole_page(self, image: Image.Image) -> str:
+        return "\n".join(
+            [
+                result
+                for result in
+                self.reader.readtext(np.array(image), paragraph=True, detail=0)
+            ]
+
+        )
+
     @staticmethod
     def merge_data(data):
         new_data = [data[0]]

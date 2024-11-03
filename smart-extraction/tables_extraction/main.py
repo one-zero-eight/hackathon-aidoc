@@ -5,6 +5,7 @@ from tables_extraction.processing import ImageProcessor as Processor, Ocr, OcrCo
 
 from tables_extraction.processing.deskewer import deskew_pil
 
+
 def extract_tables(pdf_path: str) -> list[pd.DataFrame | None]:
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -19,14 +20,16 @@ def extract_tables(pdf_path: str) -> list[pd.DataFrame | None]:
         OcrConfig(language="ru"),
     )
 
-    results = []
+    texts = []
+    table_dfs = []
 
     for page in pages:
         try:
             page = deskew_pil(page)
             detection_result = detection_model.detect(page)
             if len(detection_result) == 0:
-                results.append(None)
+                table_dfs.append(None)
+                texts.append(None)
                 continue
             bbox = detection_model.get_max_area_bbox(detection_result)
 
@@ -40,17 +43,20 @@ def extract_tables(pdf_path: str) -> list[pd.DataFrame | None]:
                 extraction_model.id2label,
             )
             if len(objects) == 0:
-                results.append(None)
+                table_dfs.append(None)
+                texts.append(None)
                 continue
             coordinates = extraction_model.get_object_coordinates(objects)
 
             outputs = ocr_runtime.run_on_coordinates(table_image, coordinates)
             data = ocr_runtime.merge_data(outputs)
 
-            results.append(pd.DataFrame(data))
+            table_dfs.append(pd.DataFrame(data))
+            texts.append(ocr_runtime.run_on_whole_page(page))
 
         except Exception as e:
             print(e)
-            results.append(None)
+            table_dfs.append(None)
+            texts.append(None)
 
-    return results
+    return table_dfs, texts
