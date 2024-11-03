@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "smart-extraction"
+version = "0.1.0"
+description = ""
+authors = ["Anton Kudryavtsev <dartt0n@ya.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10,<3.12"
+transformers = "^4.46.1"
+accelerate = "^1.1.0"
+pdf2image = "^1.17.0"
+ultralytics = "<8.1.0"
+ultralyticsplus = "^0.1.0"
+pillow = "^11.0.0"
+numpy = "^2.1.3"
+torch = "^2.5.1"
+torchvision = "^0.20.1"
+easyocr = "^1.7.2"
+pandas = "^2.2.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
