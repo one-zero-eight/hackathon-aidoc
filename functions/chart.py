@@ -8,167 +8,156 @@ import pandas as pd
 
 from open_webui.apps.webui.models.chats import Chats
 from open_webui.apps.webui.models.files import Files, FileForm
+from open_webui.apps.webui.models.users import Users
 from open_webui.config import UPLOAD_DIR
-
-from open_webui.utils.misc import add_or_update_system_message
+from open_webui.main import generate_chat_completions
 
 VIZ_DIR = "visualizations"
-INLET_SYSTEM_PROMPT = """
-Если есть возможность визуализировать данные для улучшения понимания данных, сделай это следующим способом:
-1. Сначала ответь на запрос пользователя.
-2. Прочитай и изучи запрос:
-• Пойми вопрос пользователя и определи предоставленные тобой данные. Если нет данных, которые нужно визуализировать, закончи свой ответ.
-3. Проанализируй данные:
-• Изучи данные в запросе, чтобы определить подходящий тип диаграммы (например, столбчатая диаграмма, круговая диаграмма, линейная диаграмма) для эффективной визуализации.
-4. Сгенерируй HTML только если визуализация будет полезна для пользователя:
-• Создай HTML-код для представления данных с использованием выбранного формата диаграммы.
-5. Откалибруй шкалу диаграммы на основе данных:
-• на основе данных постарайся сделать шкалу диаграммы максимально читаемой.
+SYSTEM_PROMPT_1 = """
+You are professional in financial analytics. You should help to build a Plotly chart or table based on the given data to help your intern. This plot should be very useful for financial analytic. Always fallback to table format if the chart is not so informative.
+Be concise and output the one type of chart or table that will be the most informative for the given data. Don't generate the code. Respond only with 1 sentence.
+"""
+USER_PROMPT_1 = """
+X = {{X_DATA}}
 
-### Основные соображения:
+Determine the type of chart or table that will be the most informative for the given data.
+"""
+SYSTEM_PROMPT_2 = """
+You are professional in financial analytics. You should generate a Plotly chart or table based on the given data to help your intern. This plot should be very useful for financial analytic. Always fallback to table format if the chart is not so informative.
 
-- Сделай так, в данных удалились любые символы, кроме букв и цифр.
-- HTML-код должен находиться в самом конце твоего ответа
-- HTML-код должен быть в блоке ```html
-- Используй только реальные данные, полученные из базы знаний
-- Не смей обманывать пользователя
+Think that var X already exists in global scope and contains dataframe. You should write parameters for Plotly: data and layout.
+Output just the content of script that defines 'layout' and 'data' variables.
+The script should start with <script> tag and end with </script> tag.
 
-### Пример 1 : 
-'''
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Chart</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-</head>
-<body>
-    <div id="chart" style="width: 100%; height: 100vh;"></div>
-    <button id="save-button">Save Screenshot</button>
-    <script>
-        // Data for the chart
-        var data = [{
-            x: [''Category 1'', ''Category 2'', ''Category 3''],
-            y: [20, 14, 23],
-            type: ''bar''
-        }];
+Example 1:
 
-        // Layout for the chart
-        var layout = {
-            title: ''Interactive Bar Chart'',
-            xaxis: {
-                title: ''Categories''
-            },
-            yaxis: {
-                title: ''Values''
-            }
-        };
+Input:
+X = {
+ "Полное наименование": ["Николаев Вячеслав Константинович", "Евтушенков Феликс Владимирович"],
+ "ОГРН юридического лица | ИНН физического лица": [null, null],
+ "Основание, в силу которого лицо признается аффилированным": [
+    "Лицо осуществляет полномочия единоличного исполнительного...", 
+    "Лицо является членом Совета директоров акционерного общества."
+ ],
+ "Дата наступления основания": ["13.03.2021", "23.06.2021"],
+ "Доля участия аффилированного лица в уставном капитале акционерного общества, %": [0.0058, null],
+ "Доля находящихся в распоряжении аффилированного лица голосующих акций акционерного общества, %": [0.0058, null]
+}
 
-        // Render the chart
-        Plotly.newPlot(''chart'', data, layout);
+Output:
+<script>
+    var layout = {
+        title: 'Состав аффилированных лиц',
+    };
 
-        // Function to save screenshot
-        document.getElementById(''save-button'').onclick = function() {
-            Plotly.downloadImage(''chart'', {format: ''png'', width: 800, height: 600, filename: ''chart_screenshot''});
-        };
+    var data = [{
+        type: 'table',
+        header: {
+            values: Object.keys(X),
+            align: "center",
+            line: { width: 1, color: 'black' },
+            fill: { color: 'grey' },
+            font: { family: 'Arial', size: 12, color: 'white' },
+        },
+        cells: {
+            values: Object.values(X),
+            align: 'center',
+            line: { color: 'black', width: 1 },
+            font: { family: 'Arial', size: 11, color: ['black'] },
+        },
+    }];
+</script>
 
-        // Function to update chart attributes
-        function updateChartAttributes(newData, newLayout) {
-            Plotly.react(''chart'', newData, newLayout);
-        }
+Example 2:
 
-        // Example of updating chart attributes
-        var newData = [{
-            x: [''Категория 1'', ''Категория 2'', ''Категория 3''],
-            y: [10, 22, 30],
-            type: ''bar''
-        }];
+Input:
+X = {
+ "N п/п": [1, 2],
+ "Наименование показателя": ["Объем голосового трафика, млрд мин. (Россия + Беларусь*)", "Количество мобильных абонентов, млн. абонентов. (Россия + Беларусь*)"],
+ "Методика расчета показателя": ["Суммарный объем всех голосовых соединений абонентов", "Группа определяет в качестве..."],
+ "6 мес. 2023": [169.8, 86.0],
+ "6 мес. 2024": [163.4, 87.3]
+}
 
-        var newLayout = {
-            title: ''Updated Bar Chart'',
-            xaxis: {
-                title: ''New Categories''
-            },
-            yaxis: {
-                title: ''New Values''
-            }
-        };
+Output:
+<script>
+    var layout = {
+        title: 'Основные операционные показатели',
+        barmode: 'group',
+    };
 
-        // Call updateChartAttributes with new data and layout
-        // updateChartAttributes(newData, newLayout);
-    </script>
-</body>
-</html>
-'''
+    var data = [{
+        type: 'bar',
+        name: '6 мес. 2023',
+        x: X["Наименование показателя"],
+        y: X["6 мес. 2023"],
+    }, {
+        type: 'bar',
+        name: '6 мес. 2024',
+        x: X["Наименование показателя"],
+        y: X["6 мес. 2024"],
+    }];
+</script>
 
-### Пример 2:
-'''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Collaborateurs par Métier/Fonction</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-</head>
-<body>
-    <div id="myChart" style="width: 100%; max-width: 700px; height: 500px; margin: 0 auto;"></div>
-    <script>
-        var data = [{
-            x: ["Ingénieur Système", "Solution Analyst", "Ingénieur d''études et Développement", "Squad Leader", "Architecte d''Entreprise", "Tech Lead", "Architecte Technique", "Référent Méthodes / Outils"],
-            y: [5, 3, 2, 1, 1, 1, 1, 1],
-            type: "bar",
-            marker: {
-                color: "rgb(49,130,189)"
-            }
-        }];
-        var layout = {
-            title: "Collaborateurs de STT par Métier/Fonction",
-            xaxis: {
-                title: "Métier/Fonction"
-            },
-            yaxis: {
-                title: "Nombre de Collaborateurs"
-            }
-        };
-        Plotly.newPlot("myChart", data, layout);
-    </script>
-</body>
-</html>
-'''
+Example 3:
+
+Input:
+X = {
+ "Наименование показателя": ["Нематериальные активы", "Основные средства"],
+ "Пояснения": ["", ""],
+ "На 30 сентября 2022 года": [22221793, 17590294],
+ "На 31 декабря 2021 года": [19762415, 17934546],
+ "На 31 декабря 2020 года": [19090789, 17539906]
+}
+
+Output:
+<script>
+    var layout = {
+        title: 'Показатели',
+    };
+
+    var data = [{
+        type: 'scatter',
+        name: X["Наименование показателя"][0],
+        x: ["На 31 декабря 2020 года", "На 31 декабря 2021 года", "На 30 сентября 2022 года"],
+        y: ["На 31 декабря 2020 года", "На 31 декабря 2021 года", "На 30 сентября 2022 года"].map(v=>X[v][0]),
+    }, {
+        type: 'scatter',
+        name: X["Наименование показателя"][1],
+        x: ["На 31 декабря 2020 года", "На 31 декабря 2021 года", "На 30 сентября 2022 года"],
+        y: ["На 31 декабря 2020 года", "На 31 декабря 2021 года", "На 30 сентября 2022 года"].map(v=>X[v][1]),
+    }, {
+        type: 'scatter',
+        name: X["Наименование показателя"][2],
+        x: ["На 31 декабря 2020 года", "На 31 декабря 2021 года", "На 30 сентября 2022 года"],
+        y: ["На 31 декабря 2020 года", "На 31 декабря 2021 года", "На 30 сентября 2022 года"].map(v=>X[v][2]),
+    }];
+</script>
+"""
+USER_PROMPT_2 = """
+{{MESSAGE_FROM_PROMPT_1}}
+
+X = {{X_DATA}}
+
+Generate the table or chart according to the determined type.
 """
 
-BAR_CHART_TEMPLATE = """
+PLOTLY_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{title}}</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
     <div class="my-chart" style="width: 100%; height: 500px;"></div>
     <script>
-        var data = [
-            {
-                x: {{x_values}},
-                y: {{y_values}},
-                type: 'bar'
-            }
-        ];
+        var X = {{X_DATA}}
 
-        var layout = {
-            title: '{{title}}',
-            xaxis: {
-                title: '{{x_title}}'
-            },
-            yaxis: {
-                title: '{{y_title}}'
-            }
-        };
+        {{SCRIPT}}
 
         var charts = document.querySelectorAll('.my-chart');
-        console.log(charts);
         if (charts.length !== 0) {
             Plotly.newPlot(charts[charts.length-1], data, layout);
         }
@@ -181,20 +170,6 @@ BAR_CHART_TEMPLATE = """
 class Filter:
     def __init__(self):
         pass
-
-    async def inlet(
-        self,
-        body: dict,
-        __event_emitter__: Callable[[Any], Awaitable[None]],
-        __user__: Optional[dict] = None,
-        __model__: Optional[dict] = None,
-    ) -> dict:
-        print("INLET body", json.dumps(body, ensure_ascii=False))
-        if "messages" not in body:
-            body["messages"] = []
-
-        # add_or_update_system_message(INLET_SYSTEM_PROMPT, body["messages"])
-        return body
 
     async def outlet(
         self,
@@ -229,28 +204,99 @@ class Filter:
         used_files = sorted(list(used_files))
         files = Files.get_files_by_ids(used_files)
 
+        user = Users.get_user_by_id(__user__["id"])
+
         content_to_display = ""
         for file in files:
-            csvs = file.meta.get("csvs", [])
+            csvs = json.loads(file.meta.get("csvs", "[]"))
             for csv in csvs:
-                content_to_display += csv
                 df = pd.read_csv(StringIO(csv))
+                json_x = json.dumps(df.to_dict("list"), ensure_ascii=False, indent=1)
 
-                content = BAR_CHART_TEMPLATE
-
-                content = content.replace("{{title}}", file.filename)
-                content = content.replace(
-                    "{{x_values}}", json.dumps(df.iloc[:, 0].tolist(), ensure_ascii=False)
+                await __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": "Finding the best chart type...",
+                            "done": False,
+                        },
+                    }
                 )
-                content = content.replace(
-                    "{{y_values}}", json.dumps(df.iloc[:, 1].tolist(), ensure_ascii=False)
-                )
-                content = content.replace("{{x_title}}", "X")
-                content = content.replace("{{y_title}}", "Y")
 
-                content_to_display += content
+                payload_1 = {
+                    "model": body["model"],
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT_1},
+                        {
+                            "role": "user",
+                            "content": USER_PROMPT_1.replace("{{X_DATA}}", json_x),
+                        },
+                    ],
+                    "stream": False,
+                }
+                response_1 = await generate_chat_completions(
+                    form_data=payload_1, user=user, bypass_filter=True
+                )
+                print("RESPONSE1", response_1)
+                message_from_prompt_1: str = response_1["choices"][0]["message"][
+                    "content"
+                ]
+
+                await __event_emitter__(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": "Generating the chart...",
+                            "done": False,
+                        },
+                    }
+                )
+
+                payload_2 = {
+                    "model": body["model"],
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT_2},
+                        {
+                            "role": "user",
+                            "content": USER_PROMPT_2.replace(
+                                "{{MESSAGE_FROM_PROMPT_1}}", message_from_prompt_1
+                            ).replace("{{X_DATA}}", json_x),
+                        },
+                    ],
+                    "stream": False,
+                }
+                response_2 = await generate_chat_completions(
+                    form_data=payload_2, user=user, bypass_filter=True
+                )
+                print("RESPONSE2", response_2)
+                js_code: str = response_2["choices"][0]["message"]["content"]
+
+                # Remove everything before <script> tag and <script> tag itself
+                if "<script>" in js_code:
+                    js_code = js_code[js_code.find("<script>") :]
+                    js_code = js_code.replace("<script>", "")
+                # Remove everything after </script> tag and </script> tag itself
+                if "</script>" in js_code:
+                    js_code = js_code[: js_code.find("</script>")]
+                    js_code = js_code.replace("</script>", "")
+
+                # Generate html content
+                html_content = PLOTLY_TEMPLATE.replace("{{X_DATA}}", json_x).replace(
+                    "{{SCRIPT}}", js_code
+                )
+
+                content_to_display += html_content
                 content_to_display += "\n\n"
 
+        await __event_emitter__(
+            {
+                "type": "status",
+                "data": {
+                    "description": "Generating the file...",
+                    "done": False,
+                },
+            }
+        )
         html_file_id = self.write_content_to_file(
             content_to_display,
             __user__["id"],
@@ -259,6 +305,15 @@ class Filter:
         )
         body["messages"][-1]["content"] += f"\n\n{{{{HTML_FILE_ID_{html_file_id}}}}}"
 
+        await __event_emitter__(
+            {
+                "type": "status",
+                "data": {
+                    "description": "Done creating charts.",
+                    "done": True,
+                },
+            }
+        )
         return body
 
     def write_content_to_file(self, content, user_id, chat_id, content_type):
