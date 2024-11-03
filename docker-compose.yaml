@@ -6,6 +6,7 @@ services:
       context: ./webui
       args:
         OLLAMA_BASE_URL: '/ollama'
+        USE_CUDA: true
       dockerfile: Dockerfile
     volumes:
       - ./open-webui-data:/app/backend/data
@@ -13,7 +14,7 @@ services:
       - "3000:8080"
     environment:
       # Set maximum log level
-      GLOBAL_LOG_LEVEL: DEBUG
+#      GLOBAL_LOG_LEVEL: DEBUG
       # Open WebUI secret key
       WEBUI_SECRET_KEY: 123
       # Disable Open WebUI analytics
@@ -22,3 +23,10 @@ services:
       ANONYMIZED_TELEMETRY: false
     extra_hosts:
       - host.docker.internal:host-gateway
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
