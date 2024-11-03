@@ -31,4 +31,4 @@ class YoloDetector:
     @staticmethod
     def get_max_area_bbox(yolo_result) -> np.ndarray:
         """Returns cxcywh int, int, int, int"""
-        return max(yolo_result.boxes.xywh, key=lambda x: x[2] * x[3]).numpy()
+        return max(yolo_result.boxes.xywh, key=lambda x: x[2] * x[3]).cpu().numpy()

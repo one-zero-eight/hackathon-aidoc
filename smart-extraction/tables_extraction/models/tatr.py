@@ -1,4 +1,4 @@
-from processing import ImageProcessor
+from tables_extraction.processing import ImageProcessor
 from transformers import TableTransformerForObjectDetection
 from PIL import Image
 from dataclasses import dataclass

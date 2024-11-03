@@ -10,6 +10,8 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./open-webui-data:/app/backend/data
+      - ./smart-extraction/tables_extraction:/app/backend/tables_extraction
+      - ./hf_cache:/hf_home
     ports:
       - "3000:8080"
     environment:
@@ -21,6 +23,7 @@ services:
       SCARF_NO_ANALYTICS: true
       DO_NOT_TRACK: true
       ANONYMIZED_TELEMETRY: false
+      HF_HOME: /hf_home
     extra_hosts:
       - host.docker.internal:host-gateway
     deploy:

@@ -1,10 +1,11 @@
 import pandas as pd
 import torch
-from models import YoloDetector, YoloConfig, TatrExtractor, TatrConfig
-from processing import ImageProcessor as Processor, Ocr, OcrConfig
+from tables_extraction.models import YoloDetector, YoloConfig, TatrExtractor, TatrConfig
+from tables_extraction.processing import ImageProcessor as Processor, Ocr, OcrConfig
 
+from tables_extraction.processing.deskewer import deskew_pil
 
-def main(pdf_path: str) -> list[pd.DataFrame | None]:
+def extract_tables(pdf_path: str) -> list[pd.DataFrame | None]:
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     pages = Processor.pdf_path_pages(pdf_path)
@@ -22,7 +23,11 @@ def main(pdf_path: str) -> list[pd.DataFrame | None]:
 
     for page in pages:
         try:
+            page = deskew_pil(page)
             detection_result = detection_model.detect(page)
+            if len(detection_result) == 0:
+                results.append(None)
+                continue
             bbox = detection_model.get_max_area_bbox(detection_result)
 
             layout = Processor.cxcywh2xyxy(bbox)
@@ -34,6 +39,9 @@ def main(pdf_path: str) -> list[pd.DataFrame | None]:
                 table_image.size,
                 extraction_model.id2label,
             )
+            if len(objects) == 0:
+                results.append(None)
+                continue
             coordinates = extraction_model.get_object_coordinates(objects)
 
             outputs = ocr_runtime.run_on_coordinates(table_image, coordinates)
