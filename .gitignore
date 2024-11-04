@@ -180,5 +180,7 @@ pyrightconfig.json
 /hf_cache
 /open-webui-data/*
 !/open-webui-data/config.json
+!/open-webui-data/functions.json
+!/open-webui-data/models.json
 
 .idea
