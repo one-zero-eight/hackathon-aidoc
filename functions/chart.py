@@ -211,6 +211,7 @@ class Filter:
             csvs = json.loads(file.meta.get("csvs", "[]"))
             for csv in csvs:
                 df = pd.read_csv(StringIO(csv))
+                df = df.fillna("")
                 json_x = json.dumps(df.to_dict("list"), ensure_ascii=False, indent=1)
 
                 await __event_emitter__(
